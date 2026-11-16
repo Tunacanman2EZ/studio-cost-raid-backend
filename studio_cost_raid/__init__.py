@@ -12,13 +12,15 @@ def create_app(config_name="development"):   # config_name has a default value n
     
     config_class = config_map[config_name]  # explanation - pick the right config class based on the config_name string
     app.config.from_object(config_class)    # explanation - copy all uppercase attributes from the config class into app.config
-    print(
-        "CURRENT CONFIG:",
-        app.config.get("SQLALCHEMY_DATABASE_URI"),
-        app.config.get("JWT_SECRET_KEY")
-    )  # explanation - show which DB URL and JWT secret the app loaded from config/env
-    print("CURRENT CONFIG:", app.config.get("SQLALCHEMY_DATABASE_URI"), app.config.get("JWT_SECRET_KEY")[:5])
-    # explanation - debug print to show which DB URL and first chars of JWT secret are loaded
+    # explanation - the two debug prints that were here are gone: one printed the FULL secret to
+    # the console/logs, and the other did app.config.get("JWT_SECRET_KEY")[:5], which crashes with
+    # "'NoneType' object is not subscriptable" the moment JWT_SECRET_KEY isn't set in the
+    # environment - exactly the case on a fresh deploy before you've added it on the host.
+    if not app.config.get("JWT_SECRET_KEY"):
+        raise RuntimeError(
+            "JWT_SECRET_KEY is not set. Set it in .env locally, or as an environment "
+            "variable on your host before the app will start."
+        )  # explanation - fail with a clear message instead of a confusing crash or an empty secret
 
     db.init_app(app)                              # connect the db helper to this app
     migrate.init_app(app, db)                     # connect migrations to this app + db
